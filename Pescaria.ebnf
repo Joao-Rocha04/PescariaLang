@@ -1,0 +1,127 @@
+program        = { declaration | statement } ;
+
+(* --------- Declarações --------- *)
+declaration    = var-decl | const-decl | fn-decl ;
+
+var-decl       = "isca" identifier ":" type [ "=" expr ] ";" ;
+const-decl     = "boia" identifier ":" type "=" expr ";" ;
+
+type           = "conta" | "peso" | "sinal" | "nome"
+               | "especie" | "peixe" | "cardume"
+               | list-type ;
+list-type      = "[" type "]" ;
+
+fn-decl        = "cevar" identifier "(" [ param-list ] ")" [ ":" type ] block ;
+param-list     = param { "," param } ;
+param          = identifier ":" type ;
+
+(* --------- Comandos --------- *)
+statement      = block
+               | assign ";"
+               | if-stmt
+               | while-stmt
+               | foreach-stmt
+               | break-stmt
+               | continue-stmt
+               | return-stmt
+               | print-stmt
+               | fish-stmt
+               | expr-stmt ;
+
+block          = "{" { declaration | statement } "}" ;
+
+assign         = lvalue "=" expr ;
+lvalue         = identifier
+               | index-access
+               | field-access
+               | sensor-access ;   (* rio.* é somente-leitura na semântica *)
+
+if-stmt        = "fisgou" "(" expr ")" statement [ "escapou" statement ] ;
+while-stmt     = "pescando" "(" expr ")" statement ;
+
+foreach-stmt   = "rede" "(" identifier "na" expr ")" statement ;
+(* itera item em coleção/cardume: ex. rede(x na card) { ... } *)
+
+break-stmt     = "cortarlinha" ";" ;
+continue-stmt  = "recolher" ";" ;
+return-stmt    = "soltar" [ expr ] ";" ;
+print-stmt     = "mostrar" "(" expr { "," expr } ")" ";" ;
+expr-stmt      = expr ";" ;
+
+(* --------- Comandos do domínio --------- *)
+fish-stmt      = nascer-stmt | mover-stmt | alimentar-stmt | remover-stmt ;
+
+nascer-stmt    = "nascer" "(" especie-lit "," expr "," expr ")" "->" lvalue ";" ;
+(* cria peixe(esp, peso, compr) e atribui a lvalue; se lvalue for cardume, push implícito *)
+
+mover-stmt     = "mover" "(" lvalue "," expr "," expr ")" ";" ;
+alimentar-stmt = "alimentar" "(" lvalue "," expr ")" ";" ;
+remover-stmt   = "remover" "(" lvalue [ "," expr ] ")" ";" ;
+(* se expr presente, remove por índice em cardume; sem retorno de valor *)
+
+(* --------- Expressões --------- *)
+expr           = logic-or ;
+logic-or       = logic-and { "||" logic-and } ;
+logic-and      = equality  { "&&" equality } ;
+equality       = relational { ( "==" | "!=" ) relational } ;
+relational     = additive  { ( "<" | "<=" | ">" | ">=" ) additive } ;
+additive       = multiplicative { ( "+" | "-" ) multiplicative } ;
+multiplicative = unary { ( "*" | "/" | "%" ) unary } ;
+unary          = ( "!" | "-" ) unary | postfix ;
+
+postfix        = primary { call | index | field } ;
+call           = "(" [ arg-list ] ")" ;
+index          = "[" expr "]" ;
+field          = "." identifier ;
+
+arg-list       = expr { "," expr } ;
+
+primary        = literal
+               | "(" expr ")"
+               | identifier
+               | sensor-access
+               | list-literal
+               | fish-literal
+               | builtin ;
+
+literal        = integer | real | boolean | string | especie-lit ;
+
+integer        = /* conforme léxico */ ;
+real           = /* conforme léxico */ ;
+boolean        = "verdadeiro" | "falso" ;
+string         = /* conforme léxico */ ;
+
+(* --------- Literais de domínio --------- *)
+especie-lit    = "especie" "." especie-id ;
+especie-id     = "piau" | "tambaqui" | "dourado" | "pirarucu"
+               | "tucunare" | "lambari" | "traira" | "agulhao" ;
+
+fish-literal   = "peixe" "{"
+                 "esp" ":" especie-lit "," "peso" ":" expr "," "compr" ":" expr
+                 "}" ;
+
+list-literal   = "[" [ expr { "," expr } ] "]" ;
+
+(* --------- Built-ins --------- *)
+builtin        = tamanho-call | juntar-call | puxar-call
+               | peso-call | compr-call | conta-call | filtra-call | media-call ;
+
+tamanho-call   = "tamanho" "(" expr ")" ;             (* tamanho de lista/cardume *)
+juntar-call    = "juntar" "(" lvalue "," expr ")" ;   (* push: adiciona ao final de cardume/lista *)
+puxar-call     = "puxar" "(" lvalue ")" ;             (* pop: remove e retorna o último elemento *)
+
+peso-call      = "peso" "(" expr ")" ;                (* peso de um peixe *)
+compr-call     = "compr" "(" expr ")" ;               (* comprimento de um peixe *)
+conta-call     = "conta" "(" expr "," especie-lit ")" ;   (* conta peixes por espécie em cardume *)
+filtra-call    = "filtra" "(" expr "," especie-lit ")" ;  (* sub-cardume só daquela espécie *)
+media-call     = "media" "(" expr ")" ;               (* média numérica de lista *)
+
+(* --------- Acesso a campos e sensores --------- *)
+field-access   = primary "." identifier ;
+index-access   = ( identifier | field-access | sensor-access ) "[" expr "]" ;
+
+sensor-access  = "rio" "." sensor-path ;
+sensor-path    = "agua" "." ( "tempC" | "pH" | "oxigenio" )
+               | "ambiente" "." ( "hora" | "local" ) ;
+
+identifier     = /* conforme léxico */ ;
