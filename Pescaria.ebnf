@@ -1,127 +1,59 @@
-program        = { declaration | statement } ;
+# PescariaLang — EBNF v2.0 (estilo C para if/while)
 
-(* --------- Declarações --------- *)
-declaration    = var-decl | const-decl | fn-decl ;
+PROGRAM     = { DECL | STMT } ;
 
-var-decl       = "isca" identifier ":" type [ "=" expr ] ";" ;
-const-decl     = "boia" identifier ":" type "=" expr ";" ;
+DECL        = "let" IDENT ":" TYPE [ "=" EXPR ] ";" ;
+TYPE        = "num" | "bool" ;
 
-type           = "conta" | "peso" | "sinal" | "nome"
-               | "especie" | "peixe" | "cardume"
-               | list-type ;
-list-type      = "[" type "]" ;
+STMT        = ASSIGN | ACTION | IF | WHILE | LOG | ";" ;
 
-fn-decl        = "cevar" identifier "(" [ param-list ] ")" [ ":" type ] block ;
-param-list     = param { "," param } ;
-param          = identifier ":" type ;
+ASSIGN      = IDENT "=" EXPR ";" ;
 
-(* --------- Comandos --------- *)
-statement      = block
-               | assign ";"
-               | if-stmt
-               | while-stmt
-               | foreach-stmt
-               | break-stmt
-               | continue-stmt
-               | return-stmt
-               | print-stmt
-               | fish-stmt
-               | expr-stmt ;
+IF          = "if" "(" EXPR ")" BLOCK [ "else" BLOCK ] ;
+WHILE       = "while" "(" EXPR ")" BLOCK ;
 
-block          = "{" { declaration | statement } "}" ;
+BLOCK       = "{" { STMT } "}" ;
 
-assign         = lvalue "=" expr ;
-lvalue         = identifier
-               | index-access
-               | field-access
-               | sensor-access ;   (* rio.* é somente-leitura na semântica *)
+LOG         = "log" "(" EXPR ")" ";" ;
 
-if-stmt        = "fisgou" "(" expr ")" statement [ "escapou" statement ] ;
-while-stmt     = "pescando" "(" expr ")" statement ;
+ACTION      = "puxar_linha" "(" ")" ";"                 
+            | "recolher_linha" "(" ")" ";"        
+            | "trocar_isca" "(" EXPR_NUM ")" ";"                /* enum da isca */
+            | "aumentar_profundidade" "(" EXPR_NUM ")" ";"      /* Δ cm ≥ 0 */
+            | "reduzir_profundidade" "(" EXPR_NUM ")" ";"       /* Δ cm ≥ 0 */
+            | "definir_profundidade" "(" EXPR_NUM ")" ";" ;     /* alvo cm ≥ 0 */
 
-foreach-stmt   = "rede" "(" identifier "na" expr ")" statement ;
-(* itera item em coleção/cardume: ex. rede(x na card) { ... } *)
+EXPR        = OR ;
+OR          = AND { "||" AND } ;
+AND         = NOT { "&&" NOT } ;
+NOT         = [ "!" ] REL ;
 
-break-stmt     = "cortarlinha" ";" ;
-continue-stmt  = "recolher" ";" ;
-return-stmt    = "soltar" [ expr ] ";" ;
-print-stmt     = "mostrar" "(" expr { "," expr } ")" ";" ;
-expr-stmt      = expr ";" ;
+REL         = SUM [ COMPARISON SUM ] ;
+COMPARISON  = "==" | "!=" | ">" | "<" | ">=" | "<=" ;
 
-(* --------- Comandos do domínio --------- *)
-fish-stmt      = nascer-stmt | mover-stmt | alimentar-stmt | remover-stmt ;
+SUM         = TERM { ("+" | "-") TERM } ;
+TERM        = FACT { ("*" | "/") FACT } ;
 
-nascer-stmt    = "nascer" "(" especie-lit "," expr "," expr ")" "->" lvalue ";" ;
-(* cria peixe(esp, peso, compr) e atribui a lvalue; se lvalue for cardume, push implícito *)
+FACT        = NUMBER
+            | "true" | "false"
+            | SENSOR
+            | IDENT
+            | "(" EXPR ")" ;
 
-mover-stmt     = "mover" "(" lvalue "," expr "," expr ")" ";" ;
-alimentar-stmt = "alimentar" "(" lvalue "," expr ")" ";" ;
-remover-stmt   = "remover" "(" lvalue [ "," expr ] ")" ";" ;
-(* se expr presente, remove por índice em cardume; sem retorno de valor *)
+EXPR_NUM    = EXPR ;  /* deve avaliar para número inteiro */
 
-(* --------- Expressões --------- *)
-expr           = logic-or ;
-logic-or       = logic-and { "||" logic-and } ;
-logic-and      = equality  { "&&" equality } ;
-equality       = relational { ( "==" | "!=" ) relational } ;
-relational     = additive  { ( "<" | "<=" | ">" | ">=" ) additive } ;
-additive       = multiplicative { ( "+" | "-" ) multiplicative } ;
-multiplicative = unary { ( "*" | "/" | "%" ) unary } ;
-unary          = ( "!" | "-" ) unary | postfix ;
+SENSOR      = "sonar" | "peixe_na_linha" | "profundidade" ;
 
-postfix        = primary { call | index | field } ;
-call           = "(" [ arg-list ] ")" ;
-index          = "[" expr "]" ;
-field          = "." identifier ;
+IDENT       = LETTER { LETTER | DIGIT | "_" } ;
+NUMBER      = DIGIT { DIGIT } ;
 
-arg-list       = expr { "," expr } ;
+LETTER      = "A" | ... | "Z" | "a" | ... | "z" ;
+DIGIT       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 
-primary        = literal
-               | "(" expr ")"
-               | identifier
-               | sensor-access
-               | list-literal
-               | fish-literal
-               | builtin ;
+/* Espaços/tabs ignorados. Comentários:
+   // linha inteira
+   /* bloco *\/
+*/
 
-literal        = integer | real | boolean | string | especie-lit ;
 
-integer        = /* conforme léxico */ ;
-real           = /* conforme léxico */ ;
-boolean        = "verdadeiro" | "falso" ;
-string         = /* conforme léxico */ ;
 
-(* --------- Literais de domínio --------- *)
-especie-lit    = "especie" "." especie-id ;
-especie-id     = "piau" | "tambaqui" | "dourado" | "pirarucu"
-               | "tucunare" | "lambari" | "traira" | "agulhao" ;
-
-fish-literal   = "peixe" "{"
-                 "esp" ":" especie-lit "," "peso" ":" expr "," "compr" ":" expr
-                 "}" ;
-
-list-literal   = "[" [ expr { "," expr } ] "]" ;
-
-(* --------- Built-ins --------- *)
-builtin        = tamanho-call | juntar-call | puxar-call
-               | peso-call | compr-call | conta-call | filtra-call | media-call ;
-
-tamanho-call   = "tamanho" "(" expr ")" ;             (* tamanho de lista/cardume *)
-juntar-call    = "juntar" "(" lvalue "," expr ")" ;   (* push: adiciona ao final de cardume/lista *)
-puxar-call     = "puxar" "(" lvalue ")" ;             (* pop: remove e retorna o último elemento *)
-
-peso-call      = "peso" "(" expr ")" ;                (* peso de um peixe *)
-compr-call     = "compr" "(" expr ")" ;               (* comprimento de um peixe *)
-conta-call     = "conta" "(" expr "," especie-lit ")" ;   (* conta peixes por espécie em cardume *)
-filtra-call    = "filtra" "(" expr "," especie-lit ")" ;  (* sub-cardume só daquela espécie *)
-media-call     = "media" "(" expr ")" ;               (* média numérica de lista *)
-
-(* --------- Acesso a campos e sensores --------- *)
-field-access   = primary "." identifier ;
-index-access   = ( identifier | field-access | sensor-access ) "[" expr "]" ;
-
-sensor-access  = "rio" "." sensor-path ;
-sensor-path    = "agua" "." ( "tempC" | "pH" | "oxigenio" )
-               | "ambiente" "." ( "hora" | "local" ) ;
-
-identifier     = /* conforme léxico */ ;
