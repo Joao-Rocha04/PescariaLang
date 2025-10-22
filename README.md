@@ -57,23 +57,27 @@ Ela expõe **sensores** do ambiente aquático e oferece **ações** de controle 
 
 ## Estruturas de controle (esboço de sintaxe)
 
-- **Variáveis**  
-  `let nome: num|bool [= expressão]`
 
-- **Atribuição**  
-  `nome = expressão`
+### Condicional: `if … else`
+```c
+if (EXPR) {
+  /* bloco-then */
+} else {
+  /* bloco-else (opcional) */
+}
+```
 
-- **Condicional**  
-  ```text
-  se expressão então
-    ...
-  senão
-    ...
-  fim
+### Laço
+
+```c
+while (EXPR) {
+  /* corpo do laço */
+}
+```
 
 ## EBNF
 
-``` 
+```c
 # PescariaLang — EBNF v2.0 (estilo C para if/while)
 
 PROGRAM     = { DECL | STMT } ;
