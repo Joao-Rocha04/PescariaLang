@@ -68,5 +68,3 @@ ID         {LETTER}({LETTER}|{DIGIT}|_)*
 .                   { printf("Caractere inesperado: %s\n", yytext); }
 
 %%
-
-int yywrap(void) { return 1; }
