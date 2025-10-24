@@ -1,0 +1,9 @@
+all: parser
+
+parser: parser.y lexer.l
+	bison -d parser.y
+	flex lexer.l
+	gcc -o pescaria parser.tab.c lex.yy.c -lfl
+
+clean:
+	rm -f pescaria parser.tab.* lex.yy.c

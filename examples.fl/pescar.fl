@@ -1,0 +1,11 @@
+let peixe : bool = true;
+let profund : num = 10;
+
+while (sonar > 0) {
+  if (peixe_na_linha) {
+    puxar_linha();
+    recolher_linha();
+  } else {
+    aumentar_profundidade(5);
+  }
+}
