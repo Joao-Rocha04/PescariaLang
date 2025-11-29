@@ -1,39 +1,29 @@
 # ===========================================================
-# Makefile — PescariaLang Compiler
-# Compila análise léxica (Flex) e sintática (Bison)
-# e executa o exemplo padrão (examples.fl)
+# Makefile — PescariaLang Compiler + VM Runner
 # ===========================================================
 
-# Nome do executável final
 EXEC = pescaria
-
-# Arquivos-fonte
 LEXER = lexer.l
 PARSER = parser.y
 
-# Arquivos gerados automaticamente
 LEXER_C = lex.yy.c
 PARSER_C = parser.tab.c
 PARSER_H = parser.tab.h
 
-# Caminho do exemplo (ajuste se necessário)
-EXAMPLE = ../examples.fl/pescar.fl
+EXAMPLE_SRC = ../examples.fl/pescar.fl
+EXAMPLE_PVM = ../examples.fl/pescar.pvm
 
-# ===========================================================
-# Alvo padrão: compila tudo
-# ===========================================================
 all: $(EXEC)
-	@echo "Compilação concluída! Executável gerado: ./$(EXEC)"
 
 # ===========================================================
-# Geração do executável
+# Compilar o compilador pescaria
 # ===========================================================
 $(EXEC): $(LEXER_C) $(PARSER_C)
-	@echo "Ligando objetos e gerando executável..."
+	@echo "Ligando compilador..."
 	gcc -o $(EXEC) $(PARSER_C) $(LEXER_C) -lfl
 
 # ===========================================================
-# Geração do parser e lexer
+# Gerar parser e lexer
 # ===========================================================
 $(PARSER_C) $(PARSER_H): $(PARSER)
 	@echo "Gerando parser (Bison)..."
@@ -44,17 +34,25 @@ $(LEXER_C): $(LEXER)
 	flex $(LEXER)
 
 # ===========================================================
-# Teste automático (roda o exemplo padrão)
+# Gerar o .pvm automaticamente
 # ===========================================================
-run: all
-	@echo "Executando exemplo padrão: $(EXAMPLE)"
-	@./$(EXEC) < $(EXAMPLE)
+pvm: $(EXEC)
+	@echo "Gerando arquivo .pvm a partir do exemplo..."
+	./$(EXEC) < $(EXAMPLE_SRC) > $(EXAMPLE_PVM)
+	@echo "Arquivo gerado: $(EXAMPLE_PVM)"
+
+# ===========================================================
+# Rodar a VM em cima do .pvm
+# ===========================================================
+run: pvm
+	@echo "Executando VM com $(EXAMPLE_PVM)..."
+	python3 pescaria_vm.py $(EXAMPLE_PVM)
 
 # ===========================================================
 # Limpeza
 # ===========================================================
 clean:
-	@echo "Limpando arquivos temporários..."
 	rm -f $(LEXER_C) $(PARSER_C) $(PARSER_H) $(EXEC)
+	rm -f $(EXAMPLE_PVM)
 
-.PHONY: all clean run
+.PHONY: all run clean pvm

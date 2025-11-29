@@ -1,85 +1,203 @@
-# PescariaLang — Resumo de Alto Nível
 
-**PescariaLang** é uma linguagem de domínio (DSL) para controlar uma máquina virtual de pesca (**PescariaVM**).  
-Ela expõe **sensores** do ambiente aquático e oferece **ações** de controle de linha, profundidade e isca por meio de comandos simples e declarativos.
+# PescariaLang — Linguagem de Controle da PescariaVM
+
+**PescariaLang** é uma linguagem de programação criada para controlar a **PescariaVM**, uma máquina virtual minimalista que simula ações e sensores de pesca.  
+Este projeto demonstra todo o pipeline clássico de construção de um compilador:
+
+> **Linguagem → Lexer (Flex) → Parser (Bison) → Assembly → Execução na VM**
+
 
 ---
 
 
-## Sensores (somente leitura)
-- **`sonar`**: número de peixes detectados nas proximidades (inteiro ≥ 0).  
-  *Uso típico*: decidir quando aproximar a isca ou recolher.
-- **`peixe_na_linha`**: indica se há peixe fisgado (0 = não, 1 = sim).  
-  *Uso típico*: acionar um “puxão” somente quando houver peixe.
-- **`profundidade`**: profundidade atual da **isca** (em centímetros, 0 = superfície).  
-  *Uso típico*: manter a isca numa faixa desejada (p. ex., 60–90 cm).
 
-> Sensores são lidos em expressões e condições. Não são alteráveis por programas.
+#  A Máquina Virtual — PescariaVM
+
+A **PescariaVM** é uma máquina virtual simples inspirada em máquinas de Minsky, projetada especificamente para executar o assembly gerado pelo compilador da PescariaLang.
 
 ---
 
-## Controles internos (ajustados por ações)
-- **Isca (`ISCA`)**: tipo de isca selecionada (enumerado; ex.: 0=milho, 1=minhoca, 2=spoon…).  
-  *Finalidade*: testar variações e adaptar-se ao comportamento dos peixes.
-- **Linha**: estado e posição da linha (puxar, recolher, profundidade alvo).  
-  *Finalidade*: fisgar, trazer o peixe e posicionar a isca no nível desejado.
+##  Registradores Mutáveis
+
+| Registrador | Função |
+|------------|--------|
+| **R_A** | Registrador geral A |
+| **R_B** | Registrador geral B |
+| **PROF** | Profundidade alvo da isca (cm) |
+| **ISCA** | Tipo de isca (enum inteiro) |
 
 ---
 
-## Ações da linguagem (alto nível)
+##  Sensores (somente leitura)
 
-> As ações abaixo descrevem **o que fazem** e **quais parâmetros recebem** (tipo/unidade/intervalo esperado).  
-> A implementação de baixo nível é responsabilidade do compilador/VM.
+| Sensor | Significado |
+|--------|-------------|
+| **SONAR** | Número de peixes detectados |
+| **PEIXE** | 1 se há peixe fisgado; 0 caso contrário |
+| **PROFUNDIDADE_ATUAL** | Profundidade atual real da isca |
 
-- **`puxar_linha`**  
-  Dá um tranco para fisgar o peixe quando houver captura.  
+A leitura é feita com:
 
-- **`recolher_linha`**  
-  Recolhe a linha continuamente.  
-
-- **`trocar_isca codigo`**  
-  Troca o tipo de isca utilizado.  
-  **Parâmetro**: `codigo` (inteiro enumerado; ex.: 0=milho, 1=minhoca, 2=spoon…).
-
-- **`aumentar_profundidade delta_cm`**  
-  Aumenta a profundidade alvo da isca (leva a isca **mais fundo**).  
-  **Parâmetro**: `delta_cm` (inteiro ≥ 0, em centímetros).
-
-- **`reduzir_profundidade delta_cm`**  
-  Reduz a profundidade alvo da isca (leva a isca **mais para cima**).  
-  **Parâmetro**: `delta_cm` (inteiro ≥ 0, em centímetros).
-
-- **`definir_profundidade alvo_cm`**  
-  Define diretamente a profundidade alvo da isca.  
-  **Parâmetro**: `alvo_cm` (inteiro ≥ 0, em centímetros).
+```asm
+READ_SENSOR SONAR
+```
 
 ---
 
-## Estruturas de controle (esboço de sintaxe)
+##  Pilha
 
+A VM possui uma pilha LIFO:
 
-### Condicional: `if … else`
+```asm
+PUSH 10
+POP R_A
+```
+
+Usada internamente para avaliação de expressões.
+
+---
+
+##  Instruções da PescariaVM
+
+| Instrução | Descrição |
+|-----------|-----------|
+| `PUSH n` | Empilha n |
+| `POP R` | Desempilha para registrador |
+| `LOAD i` | Empilha variável local |
+| `STORE i` | Armazena topo da pilha em variável |
+| `READ_SENSOR nome` | Empilha valor do sensor |
+| `ADD`, `SUB`, `MUL`, `DIV` | Aritmética |
+| `CMP_EQ`, `CMP_NE`, `CMP_GT`, `CMP_LT`, `CMP_GE`, `CMP_LE` | Comparações |
+| `AND`, `OR`, `NOT` | Operações lógicas |
+| `JUMP label` | Salto |
+| `JUMP_IF_FALSE label` | Salta se valor no topo for 0 |
+| `ACTION nome` | Executa ação de pesca |
+| `LOG` | Imprime topo |
+| `HALT` | Encerra execução |
+
+---
+
+##  Ambiente Simulado
+
+A VM implementa um ambiente básico:
+
+- `SONAR` diminui aos poucos  
+- `PEIXE` pode ocorrer aleatoriamente  
+- `PROFUNDIDADE_ATUAL` converge lentamente ao alvo `PROF`  
+
+Isso é suficiente para testar condicionais, loops e ações.
+
+---
+
+#  A Linguagem — PescariaLang
+
+---
+
+##  Sensores
+
+- `sonar`
+- `peixe_na_linha`
+- `profundidade`
+
+---
+
+##  Ações
+
 ```c
-if (EXPR) {
-  /* bloco-then */
-} else {
-  /* bloco-else (opcional) */
+puxar_linha();
+recolher_linha();
+trocar_isca(x);
+aumentar_profundidade(x);
+reduzir_profundidade(x);
+definir_profundidade(x);
+```
+
+---
+
+##  Estruturas
+
+```c
+if (expr) { ... } else { ... }
+
+while (expr) { ... }
+
+log(expr);
+```
+
+---
+
+#  Exemplo: pescar.fl
+
+```c
+let peixe : bool = true;
+let profund : num = 10;
+
+while (sonar > 0) {
+  if (peixe_na_linha) {
+    puxar_linha();
+    recolher_linha();
+  } else {
+    aumentar_profundidade(5);
+  }
 }
 ```
 
-### Laço
+---
 
-```c
-while (EXPR) {
-  /* corpo do laço */
-}
+#  Compilação e Execução
+
+### 1 Compilar tudo + gerar `.pvm` + executar na VM
+
+Na pasta `src/`:
+
+```bash
+make run
 ```
 
-## EBNF
+O Makefile:
 
-```c
-# PescariaLang — EBNF v2.0 (estilo C para if/while)
+1. Gera parser e lexer  
+2. Compila o executável `pescaria`  
+3. Converte `pescar.fl` em `pescar.pvm`  
+4. Executa a VM automaticamente  
 
+---
+
+###  Gerar `.pvm` manualmente
+
+```bash
+./pescaria < ../examples.fl/pescar.fl > ../examples.fl/pescar.pvm
+```
+
+###  Rodar VM manualmente
+
+```bash
+python3 pescaria_vm.py ../examples.fl/pescar.pvm
+```
+
+---
+
+#  Estrutura do Repositório
+
+```
+PescariaLang/
+├── examples.fl/
+│   └── pescar.fl
+├── src/
+│   ├── lexer.l
+│   ├── parser.y
+│   ├── pescaria_vm.py
+│   ├── Makefile
+│   └── pescaria (gerado)
+├── Pescaria.ebnf
+└── README.md
+```
+
+---
+
+#  Gramática EBNF da Linguagem
+
+```ebnf
 PROGRAM     = { DECL | STMT } ;
 
 DECL        = "let" IDENT ":" TYPE [ "=" EXPR ] ";" ;
@@ -96,12 +214,12 @@ BLOCK       = "{" { STMT } "}" ;
 
 LOG         = "log" "(" EXPR ")" ";" ;
 
-ACTION      = "puxar_linha" "(" ")" ";"                 
-            | "recolher_linha" "(" ")" ";"        
-            | "trocar_isca" "(" EXPR_NUM ")" ";"                /* enum da isca */
-            | "aumentar_profundidade" "(" EXPR_NUM ")" ";"      /* Δ cm ≥ 0 */
-            | "reduzir_profundidade" "(" EXPR_NUM ")" ";"       /* Δ cm ≥ 0 */
-            | "definir_profundidade" "(" EXPR_NUM ")" ";" ;     /* alvo cm ≥ 0 */
+ACTION      = "puxar_linha" "(" ")" ";"
+            | "recolher_linha" "(" ")" ";"
+            | "trocar_isca" "(" EXPR_NUM ")" ";"
+            | "aumentar_profundidade" "(" EXPR_NUM ")" ";"
+            | "reduzir_profundidade" "(" EXPR_NUM ")" ";"
+            | "definir_profundidade" "(" EXPR_NUM ")" ";" ;
 
 EXPR        = OR ;
 OR          = AND { "||" AND } ;
@@ -120,23 +238,29 @@ FACT        = NUMBER
             | IDENT
             | "(" EXPR ")" ;
 
-EXPR_NUM    = EXPR ;  /* deve avaliar para número inteiro */
+EXPR_NUM    = EXPR ;
 
 SENSOR      = "sonar" | "peixe_na_linha" | "profundidade" ;
 
 IDENT       = LETTER { LETTER | DIGIT | "_" } ;
 NUMBER      = DIGIT { DIGIT } ;
-
-LETTER      = "A" | ... | "Z" | "a" | ... | "z" ;
-DIGIT       = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
-
-/* Espaços/tabs ignorados. Comentários:
-   // linha inteira
-   /* bloco *\/
-*/
-
-
-
-
 ```
 
+---
+
+#  Observações para Avaliação
+
+- Linguagem criada do zero  
+- EBNF formal e completa  
+- Lexer e Parser com Flex/Bison  
+- Geração de assembly própria  
+- VM original com registradores, sensores, pilha e ISA mínima  
+- Makefile automatizado  
+- Exemplo funcional  
+- Documentação completa — este arquivo
+
+---
+
+#  Conclusão
+
+**PescariaLang** demonstra o ciclo completo de um compilador real, capaz de transformar uma linguagem personalizada em assembly executável em uma máquina virtual criada especificamente para este projeto acadêmico.
